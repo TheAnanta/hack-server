@@ -1,0 +1,243 @@
+generator client {
+    provider = "prisma-client"
+    output   = "./generated"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+model Role {
+    id               String            @id @default(cuid())
+    slug             String            @unique
+    description      String
+    role_permissions RolePermissions[]
+    users            User[]
+}
+
+model Permissions {
+    id               String            @id @default(cuid())
+    slug             String            @unique
+    description      String
+    role_permissions RolePermissions[]
+    user_permissions UserPermissions[]
+}
+
+model RolePermissions {
+    id            String      @id @default(cuid())
+    role_id       String
+    role          Role        @relation(references: [id], fields: [role_id], onDelete: Cascade)
+    permission_id String
+    permission    Permissions @relation(references: [id], fields: [permission_id], onDelete: Cascade)
+}
+
+model UserPermissions {
+    id            String      @id @default(cuid())
+    user_id       String
+    permission_id String
+    user          User        @relation(references: [uuid], fields: [user_id], onDelete: Cascade)
+    permission    Permissions @relation(references: [id], fields: [permission_id], onDelete: Cascade)
+}
+
+model College {
+    id         String   @id @default(cuid())
+    name       String   @unique
+    logo       String
+    bio        String
+    location   String
+    created_at DateTime @default(now())
+    updated_at DateTime @default(now())
+    event      Event?
+    students   User[]
+    rooms      Room[]
+}
+
+model User {
+    uuid              String            @id
+    name              String
+    roll_number       String
+    email             String            @unique
+    role_id           String
+    role              Role              @relation(fields: [role_id], references: [id])
+    year_of_study     Int
+    branch            String
+    department        String
+    college_id        String
+    college           College           @relation(references: [id], fields: [college_id], onDelete: Cascade)
+    profile_picture   String
+    phone_number      String
+    team_id           String?
+    team              Team?             @relation(references: [team_id], fields: [team_id], onDelete: Cascade)
+    created_at        DateTime          @default(now())
+    updated_at        DateTime          @default(now())
+    user_permissions  UserPermissions[]
+    event_organizers  EventOrganizer[]
+    organizations     Organization[]
+    lead_of_team      Team?             @relation("teamLeader")
+    payments          Payment[]
+    checkin_checkouts CheckinCheckout[]
+    judge_scores      JudgeScore[]
+}
+
+model Team {
+    team_id              String           @id
+    team_name            String
+    created_at           DateTime         @default(now())
+    updated_at           DateTime         @default(now())
+    problem_statement_id String
+    problem_statement    ProblemStatement @relation(references: [id], fields: [problem_statement_id], onDelete: Cascade)
+    events_id            String
+    events               Event            @relation(references: [id], fields: [events_id], onDelete: Cascade)
+    teamLeaderId         String           @unique
+    teamLeader           User             @relation("teamLeader", references: [uuid], fields: [teamLeaderId], onDelete: Cascade)
+    room_id              String
+    room                 Room             @relation(references: [id], fields: [room_id], onDelete: Cascade)
+    users                User[]
+    payments             Payment[]
+    grading              Grading?
+    github_link          String?
+    demo_link            String?
+    judge_scores         JudgeScore[]
+}
+
+model ProblemStatement {
+    id              String       @id @default(cuid())
+    title           String
+    description     String
+    created_at      DateTime     @default(now())
+    updated_at      DateTime     @default(now())
+    approved        Boolean
+    track           String //eg. mobile, web, frontend, backend,....
+    teams           Team[]
+    organization_id String
+    organization    Organization @relation(references: [id], fields: [organization_id], onDelete: Cascade)
+}
+
+model Event {
+    id                         String                      @id @default(cuid())
+    name                       String
+    college_id                 String                      @unique
+    college                    College                     @relation(references: [id], fields: [college_id], onDelete: Cascade)
+    start_date                 DateTime
+    end_date                   DateTime
+    description                String
+    created_at                 DateTime                    @default(now())
+    updated_at                 DateTime                    @default(now())
+    teams                      Team[]
+    event_organizers           EventOrganizer[]
+    eventConfigurations        EventConfiguration[]
+    dynamicEventConfigurations DynamicEventConfiguration[]
+}
+
+model EventConfiguration {
+    id                  String   @id @default(cuid())
+    event_id            String
+    event               Event    @relation(references: [id], fields: [event_id], onDelete: Cascade)
+    is_active           Boolean  @default(true)
+    max_number_of_teams Int      @default(200)
+    minimum_team_size   Int      @default(3)
+    maximum_team_size   Int      @default(6)
+    created_at          DateTime @default(now())
+    updated_at          DateTime @default(now())
+}
+
+model DynamicEventConfiguration {
+    id         String   @id @default(cuid())
+    event_id   String
+    event      Event    @relation(references: [id], fields: [event_id], onDelete: Cascade)
+    slug       String   @unique
+    value      String
+    created_at DateTime @default(now())
+    updated_at DateTime @default(now())
+}
+
+model EventOrganizer {
+    id       String @id @default(cuid())
+    event_id String
+    event    Event  @relation(references: [id], fields: [event_id], onDelete: Cascade)
+    user_id  String
+    user     User   @relation(references: [uuid], fields: [user_id], onDelete: Cascade)
+}
+
+model Organization {
+    id                 String             @id @default(cuid())
+    name               String
+    bio                String
+    logo               String
+    founder_id         String
+    founder            User               @relation(references: [uuid], fields: [founder_id], onDelete: Cascade)
+    created_at         DateTime           @default(now())
+    updated_at         DateTime           @default(now())
+    problem_statements ProblemStatement[]
+}
+
+enum PaymentStatus {
+    PENDING
+    COMPLETED
+    FAILED
+}
+
+model Payment {
+    id         String        @id @default(cuid())
+    amount     Int
+    payment_id String
+    status     PaymentStatus @default(PENDING)
+    created_at DateTime      @default(now())
+    updated_at DateTime      @default(now())
+    user_id    String
+    user       User          @relation(references: [uuid], fields: [user_id], onDelete: Cascade)
+    team_id    String
+    team       Team          @relation(references: [team_id], fields: [team_id], onDelete: Cascade)
+}
+
+model Room {
+    id          String   @id @default(cuid())
+    name        String
+    college_id  String
+    college     College  @relation(fields: [college_id], references: [id], onDelete: Cascade)
+    table_count Int
+    created_at  DateTime @default(now())
+    updated_at  DateTime @default(now())
+    teams       Team[]
+}
+
+model CheckinCheckout {
+    id            String   @id @default(cuid())
+    checkin_time  DateTime
+    checkout_time DateTime
+    user_id       String
+    user          User     @relation(references: [uuid], fields: [user_id], onDelete: Cascade)
+    created_at    DateTime @default(now())
+    updated_at    DateTime @default(now())
+}
+
+model Grading {
+    id             String   @id @default(cuid())
+    team_id        String   @unique
+    team           Team     @relation(references: [team_id], fields: [team_id], onDelete: Cascade)
+    innovation     Int
+    presentation   Int
+    creativity     Int
+    feasability    Int
+    implementation Int
+    points         Int
+    created_at     DateTime @default(now())
+    updated_at     DateTime @default(now())
+}
+
+model JudgeScore {
+    id             String   @id @default(cuid())
+    team_id        String
+    judge_id       String
+    innovation     Int
+    feasibility    Int
+    tech_stack     Int
+    presentation   Int
+    creativity     Int
+    implementation Int
+    comments       String?
+    created_at     DateTime @default(now())
+
+    team  Team @relation(references: [team_id], fields: [team_id], onDelete: Cascade)
+    judge User @relation(references: [uuid], fields: [judge_id], onDelete: Cascade)
+}
